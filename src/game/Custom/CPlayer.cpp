@@ -5,6 +5,7 @@
 #include "Spells/SpellMgr.h"
 #include "Spells/Spell.h"
 #include "Globals/ObjectMgr.h"
+#include "World/World.h"
 #include "AntiCheat/AntiCheat.h"
 #include "AntiCheat/AntiCheat_speed.h"
 #include "AntiCheat/AntiCheat_teleport.h"
@@ -23,17 +24,28 @@
 
 CPlayer::CPlayer(WorldSession* session) : Player(session)
 {
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_speed(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_teleport(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_fly(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_jump(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_gravity(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_waterwalking(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_wallclimb(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_walljump(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_tptoplane(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_nofall(this)));
-    antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_time(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_SPEEDCHEAT))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_speed(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_TELEPORT))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_teleport(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_FLY))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_fly(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_JUMP))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_jump(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_GRAVITY))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_gravity(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_WATERWALKING))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_waterwalking(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_WALLCLIMBING))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_wallclimb(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_WALLJUMPING))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_walljump(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_TELE2PLANE))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_tptoplane(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_NOFALL))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_nofall(this)));
+    if (sWorld.getConfig(CONFIG_BOOL_ANTICHEAT_TIME))
+        antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_time(this)));
     //antiCheatStorage.push_back(AntiCheatPtr(new AntiCheat_test(this)));
 
     m_GMFly = false;
@@ -156,13 +168,12 @@ void CPlayer::CFJoinBattleGround()
     if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
         return;
 
-    if (!NativeTeam())
-    {
-        SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
-        setFaction(getFFaction());
-        ReplaceRacials(false);
-    }
+    if (NativeTeam())
+        return;
 
+    SetByteValue(UNIT_FIELD_BYTES_0, 0, getFRace());
+    setFaction(getFFaction());
+    ReplaceRacials(false);
     FakeDisplayID();
 
     sWorld.InvalidatePlayerDataToAllClient(this->GetObjectGuid());
@@ -173,10 +184,9 @@ void CPlayer::CFLeaveBattleGround()
     if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
         return;
 
-    ReplaceRacials(true);
-
     SetByteValue(UNIT_FIELD_BYTES_0, 0, getORace());
     setFaction(getOFaction());
+    ReplaceRacials(true);
     InitDisplayIds();
 
     sWorld.InvalidatePlayerDataToAllClient(GetObjectGuid());
@@ -184,7 +194,7 @@ void CPlayer::CFLeaveBattleGround()
 
 void CPlayer::FakeDisplayID()
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED) || NativeTeam())
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
         return;
 
     PlayerInfo const* info = sObjectMgr.GetPlayerInfo(getRace(), getClass());
@@ -220,7 +230,8 @@ void CPlayer::FakeDisplayID()
 
 void CPlayer::ReplaceRacials(bool native)
 {
-    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED))
+    if (!sWorld.getConfig(CONFIG_BOOL_CFBG_ENABLED) ||
+        sWorld.getConfig(CONFIG_BOOL_CFBG_REPLACERACIALS))
         return;
 
     // SpellId, Original Team Spell
